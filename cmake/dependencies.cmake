@@ -35,7 +35,9 @@ EXTERNALPROJECT_ADD(
   SOURCE_DIR        ${source_dir}
   BINARY_DIR        ${build_dir}
   CONFIGURE_COMMAND mkdir /${build_dir}/build &> /dev/null
-  BUILD_COMMAND     cd ${build_dir}/build && cmake -D CPR_USE_SYSTEM_CURL=ON
+  # BUILD_COMMAND     cd ${build_dir}/build && cmake -D CPR_USE_SYSTEM_CURL=ON
+  #                   ${source_dir} && make
+  BUILD_COMMAND     cd ${build_dir}/build && cmake -D CPR_USE_SYSTEM_CURL=OFF
                     ${source_dir} && make
   UPDATE_COMMAND    ""
   INSTALL_COMMAND   ""
@@ -44,4 +46,5 @@ EXTERNALPROJECT_ADD(
 
 include_directories(${source_dir}/include)
 include_directories(${build_dir}/build/cpr_generated_includes)
+include_directories(${build_dir}/build/_deps/curl-src/include)
 link_directories(${build_dir}/build/lib)

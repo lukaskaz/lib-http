@@ -7,7 +7,7 @@ int main()
     try
     {
         using namespace http::cpr;
-        auto httpIf = http::HttpIfFactory<http::cpr::Http>::create();
+        auto httpIf = http::HttpFactory::create<http::cpr::Http>();
     }
     catch (std::exception& err)
     {

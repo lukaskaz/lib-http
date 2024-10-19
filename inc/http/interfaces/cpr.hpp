@@ -15,7 +15,7 @@ class Http : public HttpIf
     std::string info() override;
 
   private:
-    friend class HttpIfFactory<Http>;
+    friend class http::HttpFactory;
     Http();
     struct Handler;
     std::unique_ptr<Handler> handler;

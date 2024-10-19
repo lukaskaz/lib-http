@@ -7,10 +7,10 @@
 namespace http
 {
 
-template <typename T>
-class HttpIfFactory
+class HttpFactory
 {
   public:
+    template <typename T>
     static std::shared_ptr<HttpIf> create()
     {
         return std::shared_ptr<T>(new T());
