@@ -11,7 +11,8 @@ class Http : public HttpIf
 {
   public:
     ~Http();
-    std::string get(const std::string&) override;
+    bool get(const datamap&, std::string&) override;
+    bool get(const datamap&, datamap&) override;
     std::string info() override;
 
   private:
