@@ -7,11 +7,54 @@
 #include <cstdlib>
 #include <iostream>
 
+using json = nlohmann::json;
+
+template <typename T, typename... Types>
+void variant_from_json(const json& json, std::variant<Types...>& variant)
+{
+    try
+    {
+        if constexpr (!std::is_same<std::monostate, T>())
+        {
+            auto value = json.get<T>();
+            if (json.type() == nlohmann::json(value).type())
+            {
+                variant = value;
+            }
+        }
+    }
+    catch (...)
+    {
+        // this variant type not match, skip to the next one
+    }
+}
+
+template <typename... Types>
+struct nlohmann::adl_serializer<std::variant<Types...>>
+{
+    static void to_json(json& json, const std::variant<Types...>& variant)
+    {
+        std::visit(
+            [&json](const auto& value) {
+                if constexpr (!std::is_same<const std::monostate&,
+                                            decltype(value)>())
+                {
+                    json = value;
+                }
+            },
+            variant);
+    }
+
+    static void from_json(const json& json, std::variant<Types...>& varinat)
+    {
+        (variant_from_json<Types>(json, varinat), ...);
+    }
+};
+
 namespace http::cpr
 {
 
 static constexpr auto httpipaddrvar = "HTTPIPADDRESS";
-using json = nlohmann::json;
 
 struct Http::Handler
 {
@@ -26,39 +69,44 @@ struct Http::Handler
         url{[this]() { return "http://" + ip + "/js?json="; }()}
     {}
 
-    std::string getmethod(const std::string& params)
+    bool getmethod(const datamap& input, std::string& output)
     {
-        auto json = json::parse(params);
-        auto resp = ::cpr::Get(::cpr::Url{url + params});
+        auto resp = ::cpr::Get(::cpr::Url{url + json(input).dump()});
         if (resp.status_code == 200)
         {
-            return resp.text;
+            output = resp.text;
+            return true;
         }
         if (resp.status_code == 0)
         {
             throw std::runtime_error("Given host IP address is invalid");
         }
-        return {};
+        return false;
+    }
+
+    bool getmethod(const datamap& input, datamap& output)
+    {
+        std::string resp;
+        if (getmethod(input, resp) && !resp.empty())
+        {
+            auto json = json::parse(resp);
+            for (const auto& [key, val] : json.items())
+            {
+                output.emplace(key, val);
+            }
+            return true;
+        }
+        return false;
     }
 
     std::string getinfo()
     {
-        return "http@" + ip;
+        return "http@" + ip + " using cpr";
     }
 
   private:
     const std::string ip;
     const std::string url;
-
-    void displayresp(const std::string& jsonstr)
-    {
-        auto json = json::parse(jsonstr);
-        for (const auto& [key, val] : json.items())
-        {
-            std::cout << key << ": " << val << '\n';
-        }
-        std::cout << "\n";
-    }
 };
 
 Http::Http() : handler{std::make_unique<Handler>()}
@@ -66,9 +114,14 @@ Http::Http() : handler{std::make_unique<Handler>()}
 
 Http::~Http() = default;
 
-std::string Http::get(const std::string& params)
+bool Http::get(const datamap& input, std::string& output)
 {
-    return handler->getmethod(params);
+    return handler->getmethod(input, output);
+}
+
+bool Http::get(const datamap& input, datamap& output)
+{
+    return handler->getmethod(input, output);
 }
 
 std::string Http::info()
