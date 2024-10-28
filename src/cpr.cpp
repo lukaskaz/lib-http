@@ -5,7 +5,6 @@
 #include <nlohmann/json.hpp>
 
 #include <cstdlib>
-#include <iostream>
 
 using json = nlohmann::json;
 
@@ -59,32 +58,41 @@ static constexpr auto httpipaddrvar = "HTTPIPADDRESS";
 struct Http::Handler
 {
   public:
-    Handler() :
-        ip{[](const char* var) {
+    Handler(std::shared_ptr<logging::LogIf> logIf) :
+        ip{[this](const char* var) {
             if (auto ip = std::getenv(var))
                 return ip;
+            log(logging::type::critical, "IP address not provided");
             throw std::runtime_error("[Http request] Please set envvar: " +
                                      std::string{var});
         }(httpipaddrvar)},
-        url{[this]() { return "http://" + ip + "/js?json="; }()}
-    {}
-
-    bool getmethod(const datamap& input, std::string& output)
+        url{[this]() { return "http://" + ip + "/js?json="; }()}, logIf{logIf}
     {
-        auto resp = ::cpr::Get(::cpr::Url{url + json(input).dump()});
+        log(logging::type::debug, "IP address: " + ip);
+        log(logging::type::debug, "Http url: " + url);
+    }
+
+    bool getmethod(const inputtype& input, std::string& output)
+    {
+        auto jsonstr = json(input).dump();
+        log(logging::type::debug, "Requested json: " + jsonstr);
+        auto resp = ::cpr::Get(::cpr::Url{url + jsonstr});
+        log(logging::type::debug, "Response code: " + resp.status_code);
         if (resp.status_code == 200)
         {
+            log(logging::type::debug, "Response data: " + resp.text);
             output = resp.text;
             return true;
         }
         if (resp.status_code == 0)
         {
+            log(logging::type::critical, "Given IP address invalid");
             throw std::runtime_error("Given host IP address is invalid");
         }
         return false;
     }
 
-    bool getmethod(const datamap& input, datamap& output)
+    bool getmethod(const inputtype& input, outputtype& output)
     {
         std::string resp;
         if (getmethod(input, resp) && !resp.empty())
@@ -107,19 +115,29 @@ struct Http::Handler
   private:
     const std::string ip;
     const std::string url;
+    std::shared_ptr<logging::LogIf> logIf;
+
+    void log(logging::type type, const std::string& msg)
+    {
+        if (logIf)
+        {
+            logIf->log(type, msg);
+        }
+    }
 };
 
-Http::Http() : handler{std::make_unique<Handler>()}
+Http::Http(std::shared_ptr<logging::LogIf> logIf) :
+    handler{std::make_unique<Handler>(logIf)}
 {}
 
 Http::~Http() = default;
 
-bool Http::get(const datamap& input, std::string& output)
+bool Http::get(const inputtype& input, std::string& output)
 {
     return handler->getmethod(input, output);
 }
 
-bool Http::get(const datamap& input, datamap& output)
+bool Http::get(const inputtype& input, outputtype& output)
 {
     return handler->getmethod(input, output);
 }
