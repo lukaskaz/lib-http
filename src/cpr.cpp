@@ -105,6 +105,7 @@ struct Http::Handler
     }
 
   private:
+    const std::string module{"libhttp"};
     std::shared_ptr<logging::LogIf> logIf;
     const std::string ip;
     const std::string url;
