@@ -14,7 +14,7 @@ class HttpFactory
     template <typename T>
     static std::shared_ptr<HttpIf> create()
     {
-        std::shared_ptr<logging::LogIf> logIf{nullptr};
+        std::shared_ptr<logging::LogIf> logIf;
         return create<T>(logIf);
     }
 

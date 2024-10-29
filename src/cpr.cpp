@@ -108,11 +108,14 @@ struct Http::Handler
     std::shared_ptr<logging::LogIf> logIf;
     const std::string ip;
     const std::string url;
+    const std::string module{"libhttp"};
 
     bool get(const std::string jsonstr, std::string& output)
     {
+        auto requesturl = url + jsonstr;
         log(logging::type::debug, "Requested json: " + jsonstr);
-        auto resp = ::cpr::Get(::cpr::Url{url + jsonstr});
+        log(logging::type::debug, "Requested url: " + requesturl);
+        auto resp = ::cpr::Get(::cpr::Url{requesturl});
         log(logging::type::debug,
             "Status code: " + std::to_string(resp.status_code));
         if (resp.status_code == 200)
@@ -133,7 +136,7 @@ struct Http::Handler
     {
         if (logIf)
         {
-            logIf->log(type, msg);
+            logIf->log(type, module, msg);
         }
     }
 };
